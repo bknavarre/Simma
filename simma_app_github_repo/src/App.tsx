@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookOpen, 
   Calendar, 
@@ -14,7 +14,11 @@ import {
   Search, 
   ExternalLink,
   Flame,
-  ChefHat
+  ChefHat,
+  DollarSign,
+  LogOut,
+  ArrowRight,
+  ShieldCheck
 } from 'lucide-react';
 
 // ==================== TYPES & INTERFACES ====================
@@ -86,8 +90,18 @@ interface DayPlan {
   dinner: DaySlot;
 }
 
+interface UserProfile {
+  name: string;
+  email: string;
+  familySize: number;
+  weeklyBudget: number;
+  preferredStore: PrimaryStore;
+  allergies: string[];
+  completedOnboarding: boolean;
+}
+
 // ==================== INITIAL DATA ====================
-const sampleRecipes: Recipe[] = [
+const defaultRecipes: Recipe[] = [
   {
     id: "r1",
     title: "H-E-B Copycat Poblano Chicken Lasagna",
@@ -199,42 +213,87 @@ function CookingMode({ recipe, onClose }: { recipe: Recipe; onClose: () => void 
 
 // ==================== MAIN SIMMA APP ====================
 export default function App() {
+  // SESSION & AUTH STATE
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('simma_logged_in') === 'true';
+  });
+
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+
+  // PROFILE & ONBOARDING STATE
+  const [profile, setProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('simma_profile');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { /* ignore */ }
+    }
+    return {
+      name: 'Brandon Navarre',
+      email: 'brandon@navarre.com',
+      familySize: 4,
+      weeklyBudget: 175,
+      preferredStore: 'HEB',
+      allergies: [],
+      completedOnboarding: false
+    };
+  });
+
+  const [onboardingStep, setOnboardingStep] = useState<number>(1);
+
+  // APP NAVIGATION & STATE
   const [tab, setTab] = useState<ActiveTab>('recipes');
   const [servingMult, setServingMult] = useState<number>(1);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
   const [selectedStoreMode, setSelectedStoreMode] = useState<PrimaryStore>('Cheapest');
-  
-  // RECIPES STATE
-  const [recipes] = useState<Recipe[]>(sampleRecipes);
 
-  // PANTRY STATE
-  const [pantryItems, setPantryItems] = useState<PantryItem[]>([
-    { id: 'p1', name: 'Sandwich Zip Bags', category: 'Paper & Plastic', inStock: false, store: 'HEB', estimatedPrice: 3.48 },
-    { id: 'p2', name: 'Gallon Zip Bags', category: 'Paper & Plastic', inStock: true, store: 'HEB', estimatedPrice: 4.28 },
-    { id: 'p3', name: 'Paper Towels (12 PK)', category: 'Paper & Plastic', inStock: true, store: 'HEB', estimatedPrice: 18.98 },
-    { id: 'p4', name: 'Trash Bags (13 Gal)', category: 'Cleaning', inStock: false, store: 'Kroger', estimatedPrice: 9.99 },
-    { id: 'p5', name: 'Dishwasher Pods', category: 'Cleaning', inStock: true, store: 'HEB', estimatedPrice: 14.49 },
-    { id: 'p6', name: 'All-Purpose Spray', category: 'Cleaning', inStock: false, store: 'HEB', estimatedPrice: 3.78 },
-  ]);
+  // RECIPES & PANTRY WITH LOCALSTORAGE PERSISTENCE
+  const [recipes, setRecipes] = useState<Recipe[]>(() => {
+    const saved = localStorage.getItem('simma_recipes');
+    return saved ? JSON.parse(saved) : defaultRecipes;
+  });
+
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>(() => {
+    const saved = localStorage.getItem('simma_pantry');
+    return saved ? JSON.parse(saved) : [
+      { id: 'p1', name: 'Sandwich Zip Bags', category: 'Paper & Plastic', inStock: false, store: 'HEB', estimatedPrice: 3.48 },
+      { id: 'p2', name: 'Gallon Zip Bags', category: 'Paper & Plastic', inStock: true, store: 'HEB', estimatedPrice: 4.28 },
+      { id: 'p3', name: 'Paper Towels (12 PK)', category: 'Paper & Plastic', inStock: true, store: 'HEB', estimatedPrice: 18.98 },
+      { id: 'p4', name: 'Trash Bags (13 Gal)', category: 'Cleaning', inStock: false, store: 'Kroger', estimatedPrice: 9.99 },
+      { id: 'p5', name: 'Dishwasher Pods', category: 'Cleaning', inStock: true, store: 'HEB', estimatedPrice: 14.49 },
+      { id: 'p6', name: 'All-Purpose Spray', category: 'Cleaning', inStock: false, store: 'HEB', estimatedPrice: 3.78 },
+    ];
+  });
+
   const [newPantryName, setNewPantryName] = useState('');
   const [newPantryCat] = useState('Paper & Plastic');
 
-  // PREFERENCES STATE
-  const [prefs, setPrefs] = useState({
-    familyName: "Navarre",
-    familySize: 4,
-    weeklyBudget: "150",
-    preferredStore: "HEB" as PrimaryStore,
-    avoidIngredients: [] as string[],
-    allergies: [] as string[],
-    geminiApiKey: ""
+  const [weeks, setWeeks] = useState<Record<string, Record<string, DayPlan>>>(() => {
+    const saved = localStorage.getItem('simma_weeks');
+    return saved ? JSON.parse(saved) : { "current": emptyWeek() };
   });
 
-  // PLANNER WEEKS STATE
-  const [weeks, setWeeks] = useState<Record<string, Record<string, DayPlan>>>({
-    "current": emptyWeek()
-  });
+  // SAVE TO LOCALSTORAGE ON UPDATES
+  useEffect(() => {
+    localStorage.setItem('simma_logged_in', String(isLoggedIn));
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    localStorage.setItem('simma_profile', JSON.stringify(profile));
+  }, [profile]);
+
+  useEffect(() => {
+    localStorage.setItem('simma_recipes', JSON.stringify(recipes));
+  }, [recipes]);
+
+  useEffect(() => {
+    localStorage.setItem('simma_pantry', JSON.stringify(pantryItems));
+  }, [pantryItems]);
+
+  useEffect(() => {
+    localStorage.setItem('simma_weeks', JSON.stringify(weeks));
+  }, [weeks]);
 
   // GROCERY COMPUTATION
   const rawGroceryItems: GroceryItem[] = useMemo(() => [
@@ -266,11 +325,34 @@ export default function App() {
     allGroceryItems.filter(item => {
       if (selectedStoreMode === 'HEB') return item.store === 'HEB';
       if (selectedStoreMode === 'Kroger') return item.store === 'Kroger';
+      if (selectedStoreMode === 'Walmart') return item.store === 'Walmart';
       return true;
     }), [allGroceryItems, selectedStoreMode]);
 
+  const itemsByStore = useMemo(() => {
+    const grouped: Record<string, GroceryItem[]> = {};
+    filteredGroceryItems.forEach(item => {
+      const s = item.store || 'HEB';
+      if (!grouped[s]) grouped[s] = [];
+      grouped[s].push(item);
+    });
+    return grouped;
+  }, [filteredGroceryItems]);
+
   const calculatedTotal = useMemo(() => 
     filteredGroceryItems.reduce((sum, item) => sum + item.estimatedPrice, 0), [filteredGroceryItems]);
+
+  // ACTIONS
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail.trim()) return;
+    setProfile(prev => ({ ...prev, email: authEmail, name: authEmail.split('@')[0] || 'User' }));
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+  };
 
   const togglePantryStock = (id: string) => {
     setPantryItems(prev => prev.map(p => p.id === id ? { ...p, inStock: !p.inStock } : p));
@@ -298,7 +380,8 @@ export default function App() {
       const recipePick = recipes[idx % recipes.length];
       if (recipePick) {
         updated[day] = {
-          ...updated[day],
+          breakfast: { type: "cook", recipeId: null, note: "Oatmeal or Eggs" },
+          lunch: { type: "cook", recipeId: null, note: "Leftovers" },
           dinner: { type: "cook", recipeId: recipePick.id, note: "" }
         };
       }
@@ -307,6 +390,202 @@ export default function App() {
     setWeeks({ ...weeks, current: updated });
   };
 
+  const setSlotRecipe = (day: string, slot: 'breakfast' | 'lunch' | 'dinner', recipeId: string | null) => {
+    const current = weeks["current"] || emptyWeek();
+    setWeeks({
+      ...weeks,
+      current: {
+        ...current,
+        [day]: {
+          ...current[day],
+          [slot]: { ...current[day][slot], recipeId }
+        }
+      }
+    });
+  };
+
+  // 1. LOGIN / SIGNUP SCREEN
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[#FCFAF7] flex flex-col justify-center items-center p-4">
+        <div className="bg-white max-w-md w-full rounded-3xl p-8 border border-[#F5EDE3] shadow-xl space-y-6">
+          <div className="text-center space-y-2">
+            <SimmaLogo className="h-12 justify-center" />
+            <p className="text-sm text-stone-500 font-semibold pt-1">Good Food Comes Together</p>
+          </div>
+
+          <div className="flex bg-[#F5EDE3]/60 p-1 rounded-2xl border border-[#F5EDE3]">
+            <button 
+              onClick={() => setAuthMode('login')} 
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${authMode === 'login' ? 'bg-[#55624F] text-white' : 'text-[#55624F]'}`}
+            >
+              Log In
+            </button>
+            <button 
+              onClick={() => setAuthMode('signup')} 
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${authMode === 'signup' ? 'bg-[#55624F] text-white' : 'text-[#55624F]'}`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#55624F] mb-1">Email Address</label>
+              <input 
+                type="email" 
+                required 
+                value={authEmail} 
+                onChange={e => setAuthEmail(e.target.value)}
+                placeholder="brandon@example.com" 
+                className="w-full p-3 border border-[#F5EDE3] rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#55624F]" 
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#55624F] mb-1">Password</label>
+              <input 
+                type="password" 
+                required 
+                value={authPassword} 
+                onChange={e => setAuthPassword(e.target.value)}
+                placeholder="••••••••" 
+                className="w-full p-3 border border-[#F5EDE3] rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#55624F]" 
+              />
+            </div>
+
+            <button type="submit" className="w-full py-3.5 bg-[#C76F42] text-white rounded-xl text-sm font-extrabold shadow-md hover:bg-[#B35E33] transition flex items-center justify-center gap-2">
+              {authMode === 'login' ? 'Log In to Simma' : 'Create Account'} <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="text-center pt-2">
+            <span className="text-xs text-stone-400 font-semibold flex items-center justify-center gap-1">
+              <ShieldCheck className="w-4 h-4 text-[#7F8F6B]" /> Secure Personal Recipe Hub
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. FIRST-TIME WELCOME / ONBOARDING WIZARD
+  if (!profile.completedOnboarding) {
+    return (
+      <div className="min-h-screen bg-[#FCFAF7] flex flex-col justify-center items-center p-4">
+        <div className="bg-white max-w-lg w-full rounded-3xl p-8 border border-[#F5EDE3] shadow-xl space-y-6">
+          <div className="flex justify-between items-center border-b border-[#F5EDE3] pb-4">
+            <SimmaLogo className="h-8" />
+            <span className="text-xs font-extrabold text-[#7F8F6B] bg-[#F5EDE3] px-3 py-1 rounded-full">Step {onboardingStep} of 3</span>
+          </div>
+
+          {onboardingStep === 1 && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Welcome to Simma! 👋</h2>
+              <p className="text-stone-500 text-sm">Let's set up your household preferences to personalize your meal plan and grocery budget.</p>
+              
+              <div className="space-y-3 pt-2">
+                <div>
+                  <label className="block text-xs font-bold text-[#55624F]">Household / Family Name</label>
+                  <input 
+                    value={profile.name} 
+                    onChange={e => setProfile({ ...profile, name: e.target.value })}
+                    className="w-full mt-1 p-3 border border-[#F5EDE3] rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#55624F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#55624F]">Family Size (Number of People)</label>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={profile.familySize} 
+                    onChange={e => setProfile({ ...profile, familySize: Number(e.target.value) })}
+                    className="w-full mt-1 p-3 border border-[#F5EDE3] rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#55624F]"
+                  />
+                </div>
+              </div>
+
+              <button onClick={() => setOnboardingStep(2)} className="w-full py-3 bg-[#55624F] text-white rounded-xl text-sm font-bold mt-4 shadow-md">
+                Continue ›
+              </button>
+            </div>
+          )}
+
+          {onboardingStep === 2 && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Budget & Primary Store 🛒</h2>
+              <p className="text-stone-500 text-sm">Set your target weekly grocery spending and preferred grocery chain.</p>
+
+              <div className="bg-[#FCFAF7] p-4 rounded-2xl border border-[#F5EDE3] space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-[#55624F] flex items-center gap-1">
+                    <DollarSign className="w-4 h-4 text-[#C76F42]" /> Weekly Budget Goal
+                  </span>
+                  <span className="text-base font-extrabold text-[#C76F42]">${profile.weeklyBudget} / week</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="50" 
+                  max="500" 
+                  step="10" 
+                  value={profile.weeklyBudget}
+                  onChange={e => setProfile({ ...profile, weeklyBudget: Number(e.target.value) })}
+                  className="w-full accent-[#55624F] cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#55624F]">Primary Grocery Store</label>
+                <select 
+                  value={profile.preferredStore}
+                  onChange={e => setProfile({ ...profile, preferredStore: e.target.value as PrimaryStore })}
+                  className="w-full mt-1 p-3 border border-[#F5EDE3] rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#55624F]"
+                >
+                  <option value="HEB">H-E-B</option>
+                  <option value="Kroger">Kroger</option>
+                  <option value="Walmart">Walmart</option>
+                  <option value="Cheapest">Best Multi-Store Price Mix</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setOnboardingStep(1)} className="py-3 px-4 bg-white border border-[#F5EDE3] font-bold text-sm rounded-xl">Back</button>
+                <button onClick={() => setOnboardingStep(3)} className="flex-1 py-3 bg-[#55624F] text-white rounded-xl text-sm font-bold shadow-md">Next Step ›</button>
+              </div>
+            </div>
+          )}
+
+          {onboardingStep === 3 && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">All Set! Ready to Cook 🎉</h2>
+              <p className="text-stone-500 text-sm">Your custom recipe vault, meal planner, and dynamic grocery sorter are configured.</p>
+
+              <div className="bg-[#FCFAF7] p-4 rounded-2xl border border-[#F5EDE3] space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-stone-500">Account:</span>
+                  <span className="font-bold text-[#2E2E2E]">{profile.name} ({profile.email})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-stone-500">Weekly Target:</span>
+                  <span className="font-bold text-[#C76F42]">${profile.weeklyBudget}/wk @ {profile.preferredStore}</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setProfile({ ...profile, completedOnboarding: true })} 
+                className="w-full py-4 bg-[#C76F42] text-white rounded-2xl text-base font-extrabold shadow-lg hover:bg-[#B35E33] transition"
+              >
+                Launch Simma Dashboard
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. MAIN DASHBOARD APP WITH FULL 6-TAB NAVIGATION
   return (
     <div className="min-h-screen bg-[#FCFAF7] text-[#2E2E2E] flex flex-col font-sans pb-24">
       
@@ -314,13 +593,19 @@ export default function App() {
       <header className="bg-white border-b border-[#F5EDE3] sticky top-0 z-30 shadow-xs px-4 py-3 flex justify-between items-center">
         <SimmaLogo className="h-9" />
 
-        <div className="flex items-center gap-1.5 bg-[#F5EDE3]/60 p-1 rounded-xl border border-[#F5EDE3]">
-          <span className="text-xs font-bold text-[#55624F] px-1.5">Servings:</span>
-          {[1, 2, 3].map(mult => (
-            <button key={mult} onClick={() => setServingMult(mult)} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${servingMult === mult ? 'bg-[#55624F] text-white' : 'text-[#55624F] hover:bg-white'}`}>
-              {mult}x
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-[#F5EDE3]/60 p-1 rounded-xl border border-[#F5EDE3]">
+            <span className="text-xs font-bold text-[#55624F] px-1.5">Servings:</span>
+            {[1, 2, 3].map(mult => (
+              <button key={mult} onClick={() => setServingMult(mult)} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${servingMult === mult ? 'bg-[#55624F] text-white' : 'text-[#55624F] hover:bg-white'}`}>
+                {mult}x
+              </button>
+            ))}
+          </div>
+
+          <button onClick={handleLogout} className="p-2 text-stone-400 hover:text-[#C76F42] transition" title="Log Out">
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
@@ -388,29 +673,59 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: PLANNER */}
+        {/* TAB 2: PLANNER (BREAKFAST, LUNCH, DINNER SLOTS) */}
         {tab === 'planner' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-[#55624F] text-white p-6 rounded-3xl shadow-sm">
               <div>
                 <span className="text-xs uppercase font-extrabold tracking-wider text-[#7F8F6B] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">Meal Schedule</span>
                 <h2 className="text-2xl font-extrabold">Weekly Meal Planner</h2>
-                <p className="text-stone-200 text-sm mt-1">Meal scheduling & smart autofill</p>
+                <p className="text-stone-200 text-sm mt-1">Full daily slot scheduling & smart autofill</p>
               </div>
               <button onClick={autoFillWeek} className="bg-[#C76F42] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-[#B35E33] transition">
-                ✨ Auto Fill
+                ✨ Auto Fill Week
               </button>
             </div>
 
-            <div className="grid gap-3">
+            <div className="space-y-4">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => {
-                const slot = weeks.current[day]?.dinner;
-                const recipe = recipes.find(r => r.id === slot?.recipeId);
+                const dayPlan = weeks.current[day] || emptyWeek()[day];
                 return (
-                  <div key={day} className="bg-white p-4 rounded-2xl border border-[#F5EDE3] flex justify-between items-center shadow-xs">
-                    <span className="font-extrabold text-sm text-[#55624F] w-16">{day}</span>
-                    <span className="text-sm font-semibold flex-1 px-2 text-[#2E2E2E]">{recipe ? recipe.title : 'Open Slot'}</span>
-                    <span className="text-xs font-bold text-[#7F8F6B] bg-[#F5EDE3] px-3 py-1 rounded-full">{recipe ? 'Dinner' : 'Empty'}</span>
+                  <div key={day} className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs space-y-3">
+                    <div className="flex justify-between items-center border-b border-[#F5EDE3] pb-2">
+                      <span className="font-extrabold text-base text-[#55624F]">{day}</span>
+                      <span className="text-xs font-bold text-[#7F8F6B] bg-[#F5EDE3] px-2.5 py-0.5 rounded-full">3 Meals</span>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-3">
+                      {(['breakfast', 'lunch', 'dinner'] as const).map(meal => {
+                        const slot = dayPlan[meal];
+                        const recipe = recipes.find(r => r.id === slot?.recipeId);
+                        return (
+                          <div key={meal} className="bg-[#FCFAF7] p-3 rounded-2xl border border-[#F5EDE3] flex flex-col justify-between space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#C76F42]">{meal}</span>
+                              {recipe && <span className="text-[10px] font-bold text-[#7F8F6B] bg-[#F5EDE3] px-1.5 py-0.5 rounded-md">Scheduled</span>}
+                            </div>
+
+                            <select
+                              value={slot?.recipeId || ""}
+                              onChange={e => setSlotRecipe(day, meal, e.target.value || null)}
+                              className="w-full bg-white border border-[#F5EDE3] rounded-xl p-2 text-xs font-bold text-[#2E2E2E] focus:ring-1 focus:ring-[#55624F]"
+                            >
+                              <option value="">-- {meal.charAt(0).toUpperCase() + meal.slice(1)} Option --</option>
+                              {recipes.map(r => (
+                                <option key={r.id} value={r.id}>{r.title}</option>
+                              ))}
+                            </select>
+
+                            {slot?.note && !recipe && (
+                              <p className="text-[11px] text-stone-500 italic px-1">{slot.note}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
@@ -418,14 +733,14 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: GROCERY */}
+        {/* TAB 3: GROCERY (STORE BREAKDOWN FOR BEST PRICE MIX) */}
         {tab === 'grocery' && (
           <div className="space-y-6">
             <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs flex flex-col md:flex-row justify-between md:items-center gap-4">
               <div>
                 <span className="text-xs uppercase font-extrabold tracking-wider text-[#C76F42]">Shop Smart</span>
                 <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Smart Grocery List</h2>
-                <p className="text-stone-500 text-sm">Aisle Sorting & Multi-Store Price Comparison</p>
+                <p className="text-stone-500 text-sm">Aisle Sorting & Multi-Store Breakdown</p>
               </div>
 
               <div className="flex items-center gap-3 bg-[#F5EDE3]/60 p-2 rounded-2xl border border-[#F5EDE3]">
@@ -437,7 +752,7 @@ export default function App() {
                   onChange={(e) => setSelectedStoreMode(e.target.value as PrimaryStore)}
                   className="bg-white border border-[#7F8F6B]/30 rounded-xl px-3 py-1.5 text-sm font-bold text-[#2E2E2E] focus:ring-2 focus:ring-[#55624F] focus:outline-none cursor-pointer"
                 >
-                  <option value="Cheapest">Best Mix (Cheapest Options)</option>
+                  <option value="Cheapest">Best Mix (Grouped by Store)</option>
                   <option value="HEB">H-E-B Only (All Items)</option>
                   <option value="Kroger">Kroger Only (All Items)</option>
                   <option value="Walmart">Walmart Only</option>
@@ -448,26 +763,52 @@ export default function App() {
             <div className="bg-white rounded-3xl border border-[#F5EDE3] shadow-xs overflow-hidden">
               <div className="p-4 bg-[#F5EDE3]/40 border-b border-[#F5EDE3] flex justify-between items-center">
                 <span className="font-bold text-sm text-[#55624F]">
-                  Showing Items for: <span className="text-[#C76F42] font-extrabold">{selectedStoreMode === 'Cheapest' ? 'Optimal Multi-Store Mix' : selectedStoreMode}</span>
+                  Store Mode: <span className="text-[#C76F42] font-extrabold">{selectedStoreMode === 'Cheapest' ? 'Optimal Multi-Store Mix' : selectedStoreMode}</span>
                 </span>
                 <span className="text-sm font-semibold text-[#2E2E2E]">
                   Estimated Total: <span className="text-[#55624F] text-base font-extrabold ml-1">${calculatedTotal.toFixed(2)}</span>
                 </span>
               </div>
 
-              <div className="divide-y divide-[#F5EDE3]/60">
-                {filteredGroceryItems.length === 0 ? (
-                  <div className="p-8 text-center text-stone-500">No items available for this store selection.</div>
-                ) : (
-                  filteredGroceryItems.map((item) => (
+              {selectedStoreMode === 'Cheapest' ? (
+                <div className="divide-y divide-[#F5EDE3]">
+                  {Object.entries(itemsByStore).map(([storeName, items]) => {
+                    const storeTotal = items.reduce((s, i) => s + i.estimatedPrice, 0);
+                    return (
+                      <div key={storeName} className="p-4 space-y-3">
+                        <div className="flex justify-between items-center bg-[#FCFAF7] p-3 rounded-2xl border border-[#F5EDE3]">
+                          <div className="flex items-center gap-2">
+                            <Store className="w-4 h-4 text-[#C76F42]" />
+                            <span className="font-extrabold text-sm text-[#2E2E2E]">{storeName}</span>
+                            <span className="text-xs text-[#7F8F6B] font-semibold">({items.length} items)</span>
+                          </div>
+                          <span className="font-extrabold text-sm text-[#55624F]">${storeTotal.toFixed(2)}</span>
+                        </div>
+
+                        <div className="space-y-2 pl-2">
+                          {items.map(item => (
+                            <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-[#F5EDE3]/40 last:border-0">
+                              <div className="flex items-center gap-3">
+                                <input type="checkbox" checked={item.checked} readOnly className="w-4 h-4 rounded border-[#7F8F6B] text-[#55624F]" />
+                                <div>
+                                  <span className="font-bold text-sm text-[#2E2E2E]">{item.name}</span>
+                                  <p className="text-[11px] text-stone-500">{item.aisle} • {item.quantity}</p>
+                                </div>
+                              </div>
+                              <span className="font-bold text-sm text-[#2E2E2E]">${item.estimatedPrice.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="divide-y divide-[#F5EDE3]/60">
+                  {filteredGroceryItems.map((item) => (
                     <div key={item.id} className="p-4 flex items-center justify-between hover:bg-[#FCFAF7] transition">
                       <div className="flex items-center gap-3">
-                        <input 
-                          type="checkbox" 
-                          checked={item.checked} 
-                          readOnly
-                          className="w-5 h-5 rounded border-[#7F8F6B] text-[#55624F] focus:ring-[#55624F]" 
-                        />
+                        <input type="checkbox" checked={item.checked} readOnly className="w-5 h-5 rounded border-[#7F8F6B] text-[#55624F]" />
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-[#2E2E2E]">{item.name}</span>
@@ -484,9 +825,9 @@ export default function App() {
                         <span className="block text-[11px] text-[#7F8F6B] font-bold uppercase">{item.store}</span>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -565,17 +906,62 @@ export default function App() {
         {/* TAB 6: PREFS */}
         {tab === 'prefs' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs">
-              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Preferences & Profile</h2>
-              <p className="text-stone-500 text-sm mt-1">Configure family settings, budgets, and API integrations</p>
+            <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs space-y-5">
+              <div>
+                <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Preferences & Profile</h2>
+                <p className="text-stone-500 text-sm mt-1">Configure family settings, weekly budget slider, and store targets</p>
+              </div>
               
-              <div className="mt-4 space-y-4">
-                <label className="block text-xs font-bold text-[#55624F]">Family Name
-                  <input value={prefs.familyName} onChange={e => setPrefs({ ...prefs, familyName: e.target.value })} className="w-full mt-1 p-2.5 border border-[#F5EDE3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#55624F]" />
-                </label>
-                <label className="block text-xs font-bold text-[#55624F]">Weekly Budget ($)
-                  <input value={prefs.weeklyBudget} onChange={e => setPrefs({ ...prefs, weeklyBudget: e.target.value })} className="w-full mt-1 p-2.5 border border-[#F5EDE3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#55624F]" />
-                </label>
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label className="block text-xs font-bold text-[#55624F]">Household / Family Name</label>
+                  <input 
+                    value={profile.name} 
+                    onChange={e => setProfile({ ...profile, name: e.target.value })} 
+                    className="w-full mt-1 p-2.5 border border-[#F5EDE3] rounded-xl text-sm font-bold text-[#2E2E2E] focus:outline-none focus:ring-2 focus:ring-[#55624F]" 
+                  />
+                </div>
+
+                <div className="bg-[#FCFAF7] p-4 rounded-2xl border border-[#F5EDE3] space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[#55624F] flex items-center gap-1">
+                      <DollarSign className="w-4 h-4 text-[#C76F42]" /> Target Weekly Budget
+                    </span>
+                    <span className="text-base font-extrabold text-[#C76F42]">${profile.weeklyBudget} / week</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="50"
+                    max="500"
+                    step="10"
+                    value={profile.weeklyBudget}
+                    onChange={e => setProfile({ ...profile, weeklyBudget: Number(e.target.value) })}
+                    className="w-full accent-[#55624F] cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#55624F]">Preferred Grocery Store</label>
+                  <select
+                    value={profile.preferredStore}
+                    onChange={e => setProfile({ ...profile, preferredStore: e.target.value as PrimaryStore })}
+                    className="w-full mt-1 p-2.5 border border-[#F5EDE3] rounded-xl text-sm font-bold text-[#2E2E2E] focus:outline-none focus:ring-2 focus:ring-[#55624F]"
+                  >
+                    <option value="HEB">H-E-B</option>
+                    <option value="Kroger">Kroger</option>
+                    <option value="Walmart">Walmart</option>
+                    <option value="Cheapest">Best Price Mix</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 border-t border-[#F5EDE3]">
+                  <button 
+                    onClick={() => setProfile({ ...profile, completedOnboarding: false })} 
+                    className="w-full py-2.5 bg-[#F5EDE3] text-[#55624F] rounded-xl text-xs font-bold hover:bg-[#EADBCC] transition"
+                  >
+                    Re-run Setup Wizard
+                  </button>
+                </div>
               </div>
             </div>
           </div>
