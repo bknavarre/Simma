@@ -12,51 +12,46 @@ import {
   Sparkles, 
   Package, 
   Search, 
-  ExternalLink,
-  Flame,
-  ChefHat,
-  DollarSign,
-  LogOut,
-  ArrowRight,
-  ShieldCheck,
-  Edit3,
-  Users,
-  Utensils,
-  ThumbsUp,
-  ThumbsDown,
-  AlertTriangle,
-  Globe,
-  Bot,
-  RefreshCw,
-  Info,
+  Flame, 
+  LogOut, 
+  ArrowRight, 
+  Edit3, 
+  Users, 
+  Utensils, 
+  ThumbsUp, 
+  ThumbsDown, 
+  Globe, 
+  Bot, 
+  RefreshCw, 
+  Info, 
   CheckCircle2
 } from 'lucide-react';
 
-// ==================== TYPES ====================
-type StoreOption = 'HEB' | 'Walmart' | 'Kroger' | 'Trader Joes' | 'Aldi';
-type StoreMode = StoreOption | 'Cheapest';
-type ActiveTab = 'recipes' | 'planner' | 'grocery' | 'pantry' | 'discover' | 'prefs';
+// ==================== TYPES & INTERFACES ====================
+export type StoreOption = 'HEB' | 'Walmart' | 'Kroger' | 'Trader Joes' | 'Aldi';
+export type StoreMode = StoreOption | 'Cheapest';
+export type ActiveTab = 'recipes' | 'planner' | 'grocery' | 'pantry' | 'discover' | 'prefs';
 
-interface StoreInfo {
+export interface StoreInfo {
   price: number;
   aisle: string;
 }
 
-interface Ingredient {
+export interface Ingredient {
   name: string;
   amount: number;
   unit: string;
   storePrices: Record<StoreOption, StoreInfo>;
 }
 
-interface Nutrition {
+export interface Nutrition {
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
 }
 
-interface Recipe {
+export interface Recipe {
   id: string;
   title: string;
   category: string;
@@ -66,14 +61,14 @@ interface Recipe {
   rating: number;
   favorite: boolean;
   baseServings: number;
-  currentMultiplier: number; // 0.5, 1, 2, 3, 4
+  currentMultiplier: number;
   nutrition: Nutrition;
   ingredients: Ingredient[];
   instructions: string;
   timesUsed: number;
 }
 
-interface PantryItem {
+export interface PantryItem {
   id: string;
   name: string;
   category: string;
@@ -81,7 +76,7 @@ interface PantryItem {
   storePrices: Record<StoreOption, StoreInfo>;
 }
 
-interface GroceryItem {
+export interface GroceryItem {
   id: string;
   name: string;
   category: string;
@@ -93,7 +88,7 @@ interface GroceryItem {
   isCommunityPrice?: boolean;
 }
 
-interface UserProfile {
+export interface UserProfile {
   name: string;
   email: string;
   adults: number;
@@ -245,6 +240,35 @@ const INITIAL_RECIPES: Recipe[] = [
   }
 ];
 
+const INITIAL_PANTRY: PantryItem[] = [
+  {
+    id: 'p1',
+    name: 'Sandwich Zip Bags',
+    category: 'Paper & Plastic',
+    inStock: true,
+    storePrices: {
+      HEB: { price: 3.48, aisle: "Aisle 11 - Household" },
+      Kroger: { price: 3.79, aisle: "Aisle 8 - Paper" },
+      Walmart: { price: 3.18, aisle: "Paper Goods" },
+      'Trader Joes': { price: 3.99, aisle: "Household" },
+      Aldi: { price: 2.99, aisle: "Aisle 1" }
+    }
+  },
+  {
+    id: 'p2',
+    name: 'Paper Towels (12 PK)',
+    category: 'Paper & Plastic',
+    inStock: false,
+    storePrices: {
+      HEB: { price: 18.98, aisle: "Aisle 11 - Household" },
+      Kroger: { price: 19.49, aisle: "Paper Aisle" },
+      Walmart: { price: 17.98, aisle: "Paper Goods" },
+      'Trader Joes': { price: 19.99, aisle: "Household" },
+      Aldi: { price: 15.99, aisle: "Aisle 1" }
+    }
+  }
+];
+
 const BRAND_STORES: StoreOption[] = ['HEB', 'Walmart', 'Kroger', 'Trader Joes', 'Aldi'];
 const REPEAT_DINNER_OPTIONS = ['Tacos', 'Pasta night', 'Chicken & rice', 'Burgers', 'Pizza night', 'Curry', 'Chili', 'Stir-fry', 'Salmon', 'Big salads', 'Soup', 'Mac & cheese'];
 const FOOD_LOVE_SKIP_OPTIONS = ['Chicken', 'Pasta', 'Tacos', 'Pizza', 'Burgers', 'Beef', 'Salmon', 'Shrimp', 'Stir-fry', 'Rice bowls', 'Mushrooms', 'Olives', 'Cilantro', 'Very spicy', 'Shellfish', 'Fish', 'Onions', 'Tomatoes', 'Eggplant', 'Pork'];
@@ -274,7 +298,7 @@ export default function App() {
 
   // USER PROFILE
   const [profile, setProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('simma_profile_v2');
+    const saved = localStorage.getItem('simma_profile_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch { /* ignore */ }
     }
@@ -302,12 +326,16 @@ export default function App() {
 
   // APP DATA
   const [recipes, setRecipes] = useState<Recipe[]>(() => {
-    const saved = localStorage.getItem('simma_recipes_v2');
+    const saved = localStorage.getItem('simma_recipes_v3');
     return saved ? JSON.parse(saved) : INITIAL_RECIPES;
   });
 
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>(() => {
+    const saved = localStorage.getItem('simma_pantry_v3');
+    return saved ? JSON.parse(saved) : INITIAL_PANTRY;
+  });
+
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
-  const [selectedRecipeModal, setSelectedRecipeModal] = useState<Recipe | null>(null);
   const [showCommunityInfo, setShowCommunityInfo] = useState<boolean>(false);
 
   // AI & DISCOVER SEARCH STATES
@@ -319,18 +347,20 @@ export default function App() {
 
   // SAVE PERSISTENCE
   useEffect(() => { localStorage.setItem('simma_logged_in', String(isLoggedIn)); }, [isLoggedIn]);
-  useEffect(() => { localStorage.setItem('simma_profile_v2', JSON.stringify(profile)); }, [profile]);
-  useEffect(() => { localStorage.setItem('simma_recipes_v2', JSON.stringify(recipes)); }, [recipes]);
+  useEffect(() => { localStorage.setItem('simma_profile_v3', JSON.stringify(profile)); }, [profile]);
+  useEffect(() => { localStorage.setItem('simma_recipes_v3', JSON.stringify(recipes)); }, [recipes]);
+  useEffect(() => { localStorage.setItem('simma_pantry_v3', JSON.stringify(pantryItems)); }, [pantryItems]);
 
   // RECIPE MULTIPLIER UPDATE
   const updateRecipeMultiplier = (recipeId: string, mult: number) => {
     setRecipes(prev => prev.map(r => r.id === recipeId ? { ...r, currentMultiplier: mult } : r));
-    if (selectedRecipeModal && selectedRecipeModal.id === recipeId) {
-      setSelectedRecipeModal(prev => prev ? { ...prev, currentMultiplier: mult } : null);
-    }
   };
 
-  // DYNAMIC GROCERY COMPUTATION (RECALCULATES ALL ITEMS FOR SPECIFIC STORE OR CHEAPEST MIX)
+  const togglePantryStock = (id: string) => {
+    setPantryItems(prev => prev.map(p => p.id === id ? { ...p, inStock: !p.inStock } : p));
+  };
+
+  // DYNAMIC GROCERY COMPUTATION
   const computedGroceryList = useMemo(() => {
     const mode = profile.preferredStore;
     const isCommunity = profile.enableCommunityPool;
@@ -345,7 +375,6 @@ export default function App() {
         let storeData: StoreInfo = ing.storePrices.HEB;
 
         if (mode === 'Cheapest') {
-          // Find lowest price store among user's selected stores
           let lowestPrice = Infinity;
           profile.selectedStores.forEach(s => {
             if (ing.storePrices[s] && ing.storePrices[s].price < lowestPrice) {
@@ -355,18 +384,16 @@ export default function App() {
             }
           });
         } else {
-          // HARD SINGLE STORE RE-CALCULATION FOR EVERY ITEM
           chosenStore = mode as StoreOption;
           storeData = ing.storePrices[chosenStore] || ing.storePrices.HEB;
         }
 
-        // Apply community price tweak if enabled
         let price = storeData.price * mult;
         let aisle = storeData.aisle;
         let isComm = false;
 
         if (isCommunity && chosenStore === 'HEB' && ing.name.includes("Chicken")) {
-          price = Math.max(1.0, price - 0.50); // Simulated community discount reported in zip code
+          price = Math.max(1.0, price - 0.50);
           aisle = `${storeData.aisle} (Verified by Zip ${profile.zipCode})`;
           isComm = true;
         }
@@ -385,8 +412,25 @@ export default function App() {
       });
     });
 
+    // Add Out-of-Stock Pantry Items to Grocery List
+    pantryItems.filter(p => !p.inStock).forEach(p => {
+      const chosenStore = mode === 'Cheapest' ? 'HEB' : (mode as StoreOption);
+      const storeData = p.storePrices[chosenStore] || p.storePrices.HEB;
+
+      list.push({
+        id: `pantry-${p.id}`,
+        name: p.name,
+        category: p.category,
+        aisle: `${storeData.aisle} (Pantry Staple)`,
+        quantity: '1 pk',
+        price: storeData.price,
+        store: chosenStore,
+        checked: false
+      });
+    });
+
     return list;
-  }, [recipes, profile.preferredStore, profile.selectedStores, profile.enableCommunityPool, profile.zipCode]);
+  }, [recipes, pantryItems, profile.preferredStore, profile.selectedStores, profile.enableCommunityPool, profile.zipCode]);
 
   const totalGroceryCost = useMemo(() => {
     return computedGroceryList.reduce((sum, item) => sum + item.price, 0);
@@ -399,7 +443,7 @@ export default function App() {
     setTimeout(() => {
       const newRec: Recipe = {
         id: `ai_${Date.now()}`,
-        title: `AI Special: ${aiChefPrompt.slice(0, 30)}...`,
+        title: `AI Special: ${aiChefPrompt.slice(0, 25)}...`,
         category: "Custom AI Dish",
         prepTime: "30 mins",
         dietTags: ["AI Private Chef", "Custom"],
@@ -481,7 +525,7 @@ export default function App() {
     );
   }
 
-  // 2. FULL 8-STEP ONBOARDING WIZARD (MATCHING SCREENSHOTS)
+  // 2. FULL 8-STEP ONBOARDING WIZARD
   if (!profile.completedOnboarding) {
     return (
       <div className="min-h-screen bg-[#FCFAF7] flex flex-col justify-center items-center p-4">
@@ -492,7 +536,7 @@ export default function App() {
             <span className="text-xs font-extrabold text-[#7F8F6B] bg-[#F5EDE3] px-3 py-1 rounded-full">{onboardingStep} of 8</span>
           </div>
 
-          {/* STEP 1: WHO ARE YOU COOKING FOR? [IMG_3244] */}
+          {/* STEP 1: WHO ARE YOU COOKING FOR? */}
           {onboardingStep === 1 && (
             <div className="space-y-5">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Who are you cooking for?</h2>
@@ -527,7 +571,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 2: GOALS / WHAT DO YOU WANT HELP WITH? [IMG_3245] */}
+          {/* STEP 2: GOALS */}
           {onboardingStep === 2 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">What do you want Simma to help with?</h2>
@@ -572,7 +616,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 3: WHERE DO YOU SHOP? [IMG_3246] */}
+          {/* STEP 3: WHERE DO YOU SHOP? */}
           {onboardingStep === 3 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Where do you shop?</h2>
@@ -606,7 +650,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 4: WHAT'S ON REPEAT AT YOUR HOUSE? [IMG_3247] */}
+          {/* STEP 4: REPEAT DINNERS */}
           {onboardingStep === 4 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">What's on repeat at your house?</h2>
@@ -645,7 +689,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 5: ANY FOODS YOU LOVE OR SKIP? [IMG_3248] */}
+          {/* STEP 5: LOVE / SKIP FOODS */}
           {onboardingStep === 5 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Any foods you love or skip?</h2>
@@ -709,7 +753,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 6: DIET RESTRICTIONS [IMG_3249] */}
+          {/* STEP 6: DIET RESTRICTIONS */}
           {onboardingStep === 6 && (
             <div className="space-y-4">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Any diets we should follow?</h2>
@@ -743,7 +787,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 7: YOU'RE ALL SET SUMMARY CARD [IMG_3259] */}
+          {/* STEP 7: YOU'RE ALL SET SUMMARY CARD */}
           {onboardingStep === 7 && (
             <div className="space-y-4">
               <span className="text-[10px] font-extrabold tracking-widest text-[#7F8F6B] uppercase">YOUR SIMMA PLAN</span>
@@ -773,7 +817,7 @@ export default function App() {
             </div>
           )}
 
-          {/* STEP 8: PAYWALL / TRIAL CARD [IMG_3261] */}
+          {/* STEP 8: PAYWALL / TRIAL CARD */}
           {onboardingStep === 8 && (
             <div className="space-y-4 text-center">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Unlock Simma Premium</h2>
@@ -841,7 +885,7 @@ export default function App() {
               <button onClick={() => setShowCommunityInfo(false)} className="font-bold text-stone-400">✕</button>
             </div>
             <p className="text-xs text-stone-600 leading-relaxed">
-              When enabled, Simma aggregates crowd-sourced price updates and real-time aisle tags submitted by neighboring shoppers in your local Zip Code (<strong>{profile.zipCode}</strong>). This catches unannounced local unadvertised store discounts!
+              When enabled, Simma aggregates crowd-sourced price updates and real-time aisle tags submitted by neighboring shoppers in your local Zip Code (<strong>{profile.zipCode}</strong>).
             </p>
             <button onClick={() => setShowCommunityInfo(false)} className="w-full py-3 bg-[#55624F] text-white font-bold rounded-xl text-xs">Got It</button>
           </div>
@@ -864,7 +908,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="font-bold text-[#55624F]">Image URL (Photo Search / Link)</label>
+                <label className="font-bold text-[#55624F]">Image URL</label>
                 <input value={editingRecipe.image} onChange={e => setEditingRecipe({ ...editingRecipe, image: e.target.value })} className="w-full p-2.5 border rounded-xl border-[#F5EDE3]" />
               </div>
 
@@ -893,7 +937,7 @@ export default function App() {
       {/* MAIN CONTAINER */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
 
-        {/* TAB 1: RECIPES (PER-RECIPE MULTIPLIER CHIPS) */}
+        {/* TAB 1: RECIPES */}
         {tab === 'recipes' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -928,7 +972,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* PER-RECIPE SERVING SIZE MULTIPLIER CHIPS (1/2x, 1x, 2x, 3x, 4x) */}
                     <div className="bg-[#FCFAF7] p-3 rounded-2xl border border-[#F5EDE3] space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-extrabold text-[#55624F]">Serving Multiplier:</span>
@@ -990,7 +1033,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 3: GROCERY (DYNAMIC SINGLE STORE RE-CALCULATION & COMMUNITY TOGGLE) */}
+        {/* TAB 3: GROCERY */}
         {tab === 'grocery' && (
           <div className="space-y-6">
             <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs space-y-4">
@@ -1000,7 +1043,6 @@ export default function App() {
                   <p className="text-stone-500 text-xs">All items priced and mapped specifically to your store choice</p>
                 </div>
 
-                {/* STORE MODE SELECTOR */}
                 <div className="flex items-center gap-2 bg-[#F5EDE3]/60 p-2 rounded-2xl border border-[#F5EDE3]">
                   <Store className="w-4 h-4 text-[#55624F]" />
                   <span className="text-xs font-bold text-[#55624F]">Target Store:</span>
@@ -1019,7 +1061,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* COMMUNITY PRICING POOL TOGGLE & EXPLANATION */}
               <div className="bg-[#FCFAF7] p-3.5 rounded-2xl border border-[#F5EDE3] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Globe className="w-4 h-4 text-[#55624F]" />
@@ -1044,7 +1085,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* GROCERY ITEMS DISPLAY */}
             <div className="bg-white rounded-3xl border border-[#F5EDE3] shadow-xs overflow-hidden">
               <div className="p-4 bg-[#F5EDE3]/40 border-b border-[#F5EDE3] flex justify-between items-center text-xs">
                 <span className="font-extrabold text-[#55624F]">
@@ -1079,14 +1119,44 @@ export default function App() {
         {/* TAB 4: PANTRY */}
         {tab === 'pantry' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs">
-              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Household Pantry Staples</h2>
-              <p className="text-xs text-stone-500 mt-1">Out of stock items auto-price on your grocery list.</p>
+            <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Household Pantry Staples</h2>
+                  <p className="text-xs text-stone-500 mt-1">Out-of-stock items auto-sync to your Grocery list.</p>
+                </div>
+                <Package className="w-6 h-6 text-[#55624F]" />
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {pantryItems.map(item => (
+                  <div key={item.id} className="p-3.5 bg-[#FCFAF7] rounded-2xl border border-[#F5EDE3] flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => togglePantryStock(item.id)}>
+                        {item.inStock ? (
+                          <div className="w-5 h-5 rounded-full bg-[#7F8F6B] flex items-center justify-center text-white">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                        ) : (
+                          <Circle className="w-5 h-5 text-[#C76F42] stroke-[2]" />
+                        )}
+                      </button>
+                      <div>
+                        <h4 className="font-bold text-xs text-[#2E2E2E]">{item.name}</h4>
+                        <span className="text-[10px] text-stone-400">{item.category}</span>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${item.inStock ? 'bg-[#7F8F6B]/20 text-[#55624F]' : 'bg-[#C76F42]/15 text-[#C76F42]'}`}>
+                      {item.inStock ? 'In Stock' : 'Needs Restock'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* TAB 5: DISCOVER (APP SEARCH, WEB SCRAPER, AI PRIVATE CHEF) */}
+        {/* TAB 5: DISCOVER */}
         {tab === 'discover' && (
           <div className="space-y-6">
             
@@ -1151,13 +1221,12 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 6: PREFS & DIET EDITING */}
+        {/* TAB 6: PREFS */}
         {tab === 'prefs' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs space-y-5">
               <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Household Preferences</h2>
 
-              {/* LOVED / SKIPPED FOOD EDITING */}
               <div className="space-y-3">
                 <span className="text-xs font-bold text-[#55624F]">Loved Foods</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -1174,7 +1243,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* RE-RUN SETUP WIZARD */}
               <div className="pt-4 border-t border-[#F5EDE3]">
                 <button onClick={() => setProfile(p => ({ ...p, completedOnboarding: false }))} className="w-full py-3 bg-[#F5EDE3] text-[#55624F] font-bold rounded-xl text-xs">
                   Re-run Onboarding Setup Wizard
