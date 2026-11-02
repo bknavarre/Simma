@@ -249,7 +249,7 @@ export default function App() {
   const [selectedStoreMode, setSelectedStoreMode] = useState<PrimaryStore>('Cheapest');
 
   // RECIPES & PANTRY WITH LOCALSTORAGE PERSISTENCE
-  const [recipes, setRecipes] = useState<Recipe[]>(() => {
+  const [recipes] = useState<Recipe[]>(() => {
     const saved = localStorage.getItem('simma_recipes');
     return saved ? JSON.parse(saved) : defaultRecipes;
   });
@@ -267,7 +267,7 @@ export default function App() {
   });
 
   const [newPantryName, setNewPantryName] = useState('');
-  const [newPantryCat] = useState('Paper & Plastic');
+  const newPantryCat = 'Paper & Plastic';
 
   const [weeks, setWeeks] = useState<Record<string, Record<string, DayPlan>>>(() => {
     const saved = localStorage.getItem('simma_weeks');
