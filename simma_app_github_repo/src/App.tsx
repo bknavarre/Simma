@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Bookmark, 
   ShoppingCart, 
@@ -7,8 +7,7 @@ import {
   Heart, 
   Store, 
   Circle, 
-  Check, 
-  Package
+  Check
 } from 'lucide-react';
 
 type PrimaryStore = 'HEB' | 'Kroger' | 'Cheapest';
