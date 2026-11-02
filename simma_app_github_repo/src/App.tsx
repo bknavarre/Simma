@@ -8,8 +8,6 @@ import {
   Store, 
   Circle, 
   Check, 
-  Sparkles, 
-  SlidersHorizontal,
   Package
 } from 'lucide-react';
 
@@ -40,12 +38,9 @@ interface GroceryItem {
 const SimmaLogo = ({ className = "h-8" }: { className?: string }) => (
   <div className={`flex items-center gap-2.5 ${className}`}>
     <svg viewBox="0 0 100 100" className="h-full w-auto aspect-square">
-      <!-- Left Leaf (Olive) -->
       <path d="M 38 22 C 24 36 30 56 48 52 C 48 36 40 22 38 22 Z" fill="#7F8F6B"/>
-      <!-- Right Leaf (Terracotta) -->
       <path d="M 62 22 C 76 36 70 56 52 52 C 52 36 60 22 62 22 Z" fill="#C76F42"/>
-      <!-- Letter S -->
-      <text x="50" y="88" font-family="'Plus Jakarta Sans', sans-serif" font-size="44" font-weight="800" fill="#2E2E2E" text-anchor="middle">S</text>
+      <text x="50" y="88" fontFamily="'Plus Jakarta Sans', sans-serif" fontSize="44" fontWeight="800" fill="#2E2E2E" textAnchor="middle">S</text>
     </svg>
     <div className="flex flex-col">
       <span className="font-extrabold text-2xl tracking-tight text-[#2E2E2E] leading-none">Simma</span>
@@ -180,7 +175,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Neutral Warm Terracotta/Sand Badge for Reorder Status */}
                   <div>
                     {item.inStock ? (
                       <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-[#7F8F6B]/15 text-[#55624F]">
@@ -275,11 +269,10 @@ export default function App() {
 
       </div>
 
-      {/* BRAND NAVIGATION BAR (Matching Photo Elements: Save / Shop / Plan / Cook / Enjoy) */}
+      {/* BRAND NAVIGATION BAR */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F5EDE3] z-40 shadow-lg md:relative md:border-t-0 md:bg-transparent">
         <div className="max-w-xl mx-auto px-6 py-2.5 flex justify-between items-center">
           
-          {/* SAVE */}
           <button 
             onClick={() => setActiveTab('pantry')}
             className={`flex flex-col items-center gap-1 transition ${activeTab === 'pantry' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
@@ -288,7 +281,6 @@ export default function App() {
             <span className="text-[11px] font-bold">Save</span>
           </button>
 
-          {/* SHOP */}
           <button 
             onClick={() => setActiveTab('grocery')}
             className={`flex flex-col items-center gap-1 transition ${activeTab === 'grocery' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
@@ -297,7 +289,6 @@ export default function App() {
             <span className="text-[11px] font-bold">Shop</span>
           </button>
 
-          {/* PLAN */}
           <button 
             onClick={() => setActiveTab('planner')}
             className={`flex flex-col items-center gap-1 transition ${activeTab === 'planner' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
@@ -306,7 +297,6 @@ export default function App() {
             <span className="text-[11px] font-bold">Plan</span>
           </button>
 
-          {/* COOK */}
           <button 
             onClick={() => setActiveTab('recipes')}
             className={`flex flex-col items-center gap-1 transition ${activeTab === 'recipes' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
@@ -315,7 +305,6 @@ export default function App() {
             <span className="text-[11px] font-bold">Cook</span>
           </button>
 
-          {/* ENJOY */}
           <button 
             onClick={() => alert('Simma Favorites & Meal Notes')}
             className="flex flex-col items-center gap-1 text-stone-400 hover:text-[#C76F42] transition"
