@@ -311,4 +311,352 @@ export default function App() {
     <div className="min-h-screen bg-[#FCFAF7] text-[#2E2E2E] flex flex-col font-sans pb-24">
       
       {/* BRAND HEADER */}
-      <header className="bg-white border-b border
+      <header className="bg-white border-b border-[#F5EDE3] sticky top-0 z-30 shadow-xs px-4 py-3 flex justify-between items-center">
+        <SimmaLogo className="h-9" />
+
+        <div className="flex items-center gap-1.5 bg-[#F5EDE3]/60 p-1 rounded-xl border border-[#F5EDE3]">
+          <span className="text-xs font-bold text-[#55624F] px-1.5">Servings:</span>
+          {[1, 2, 3].map(mult => (
+            <button key={mult} onClick={() => setServingMult(mult)} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${servingMult === mult ? 'bg-[#55624F] text-white' : 'text-[#55624F] hover:bg-white'}`}>
+              {mult}x
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
+
+        {/* TAB 1: RECIPES */}
+        {tab === 'recipes' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-extrabold text-[#2E2E2E]">My Recipe Vault</h2>
+                <p className="text-stone-500 text-sm">Saved recipes, macro targets, and serving scaler</p>
+              </div>
+              <button className="flex items-center gap-2 bg-[#55624F] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-[#434F3E] transition">
+                <Plus className="w-4 h-4" /> Add Recipe
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {recipes.map(recipe => (
+                <div key={recipe.id} onClick={() => setSelectedRecipe(recipe)} className="bg-white rounded-3xl border border-[#F5EDE3] shadow-xs overflow-hidden hover:border-[#7F8F6B]/40 transition flex flex-col cursor-pointer">
+                  {recipe.image && (
+                    <div className="h-48 overflow-hidden relative">
+                      <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+                      <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-md text-[#55624F] font-bold text-xs px-3 py-1 rounded-full border border-[#F5EDE3]">
+                        {recipe.category}
+                      </span>
+                    </div>
+                  )}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <h3 className="font-extrabold text-lg text-[#2E2E2E]">{recipe.title}</h3>
+                      <div className="flex items-center gap-3 text-xs font-semibold text-[#7F8F6B] mt-1">
+                        {recipe.prepTime && <span>{recipe.prepTime}</span>}
+                        <span>•</span>
+                        <span>{recipe.baseServings * servingMult} Servings</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-[#C76F42]"><Flame className="w-3.5 h-3.5" /> {recipe.nutrition.calories * servingMult} kcal</span>
+                      </div>
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        {recipe.dietTags.map(tag => (
+                          <span key={tag} className="text-[10px] font-bold bg-[#F5EDE3] text-[#C76F42] px-2.5 py-0.5 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#F5EDE3]">
+                      <h4 className="text-xs font-bold uppercase text-[#55624F] tracking-wider mb-2">Scaled Ingredients ({servingMult}x):</h4>
+                      <ul className="text-xs text-stone-600 space-y-1">
+                        {recipe.ingredients.map((ing, idx) => (
+                          <li key={idx} className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7F8F6B]"></span>
+                            {ing.amount * servingMult} {ing.unit} {ing.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: PLANNER */}
+        {tab === 'planner' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-[#55624F] text-white p-6 rounded-3xl shadow-sm">
+              <div>
+                <span className="text-xs uppercase font-extrabold tracking-wider text-[#7F8F6B] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">Meal Schedule</span>
+                <h2 className="text-2xl font-extrabold">Weekly Meal Planner</h2>
+                <p className="text-stone-200 text-sm mt-1">Meal scheduling & smart autofill</p>
+              </div>
+              <button onClick={autoFillWeek} className="bg-[#C76F42] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-[#B35E33] transition">
+                ✨ Auto Fill
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => {
+                const slot = weeks.current[day]?.dinner;
+                const recipe = recipes.find(r => r.id === slot?.recipeId);
+                return (
+                  <div key={day} className="bg-white p-4 rounded-2xl border border-[#F5EDE3] flex justify-between items-center shadow-xs">
+                    <span className="font-extrabold text-sm text-[#55624F] w-16">{day}</span>
+                    <span className="text-sm font-semibold flex-1 px-2 text-[#2E2E2E]">{recipe ? recipe.title : 'Open Slot'}</span>
+                    <span className="text-xs font-bold text-[#7F8F6B] bg-[#F5EDE3] px-3 py-1 rounded-full">{recipe ? 'Dinner' : 'Empty'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: GROCERY */}
+        {tab === 'grocery' && (
+          <div className="space-y-6">
+            <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs flex flex-col md:flex-row justify-between md:items-center gap-4">
+              <div>
+                <span className="text-xs uppercase font-extrabold tracking-wider text-[#C76F42]">Shop Smart</span>
+                <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Smart Grocery List</h2>
+                <p className="text-stone-500 text-sm">Aisle Sorting & Multi-Store Price Comparison</p>
+              </div>
+
+              <div className="flex items-center gap-3 bg-[#F5EDE3]/60 p-2 rounded-2xl border border-[#F5EDE3]">
+                <Store className="w-5 h-5 text-[#55624F] ml-1" />
+                <label htmlFor="store-select" className="text-xs font-bold uppercase tracking-wider text-[#55624F]">Store:</label>
+                <select
+                  id="store-select"
+                  value={selectedStoreMode}
+                  onChange={(e) => setSelectedStoreMode(e.target.value as PrimaryStore)}
+                  className="bg-white border border-[#7F8F6B]/30 rounded-xl px-3 py-1.5 text-sm font-bold text-[#2E2E2E] focus:ring-2 focus:ring-[#55624F] focus:outline-none cursor-pointer"
+                >
+                  <option value="Cheapest">Best Mix (Cheapest Options)</option>
+                  <option value="HEB">H-E-B Only (All Items)</option>
+                  <option value="Kroger">Kroger Only (All Items)</option>
+                  <option value="Walmart">Walmart Only</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-[#F5EDE3] shadow-xs overflow-hidden">
+              <div className="p-4 bg-[#F5EDE3]/40 border-b border-[#F5EDE3] flex justify-between items-center">
+                <span className="font-bold text-sm text-[#55624F]">
+                  Showing Items for: <span className="text-[#C76F42] font-extrabold">{selectedStoreMode === 'Cheapest' ? 'Optimal Multi-Store Mix' : selectedStoreMode}</span>
+                </span>
+                <span className="text-sm font-semibold text-[#2E2E2E]">
+                  Estimated Total: <span className="text-[#55624F] text-base font-extrabold ml-1">${calculatedTotal.toFixed(2)}</span>
+                </span>
+              </div>
+
+              <div className="divide-y divide-[#F5EDE3]/60">
+                {filteredGroceryItems.length === 0 ? (
+                  <div className="p-8 text-center text-stone-500">No items available for this store selection.</div>
+                ) : (
+                  filteredGroceryItems.map((item) => (
+                    <div key={item.id} className="p-4 flex items-center justify-between hover:bg-[#FCFAF7] transition">
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="checkbox" 
+                          checked={item.checked} 
+                          readOnly
+                          className="w-5 h-5 rounded border-[#7F8F6B] text-[#55624F] focus:ring-[#55624F]" 
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[#2E2E2E]">{item.name}</span>
+                            {item.fromPantry && (
+                              <span className="text-[10px] bg-[#F5EDE3] text-[#C76F42] px-2 py-0.5 rounded-full font-extrabold">Pantry Staple</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-stone-500">{item.aisle} • Qty: {item.quantity}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="font-extrabold text-[#2E2E2E]">${item.estimatedPrice.toFixed(2)}</span>
+                        <span className="block text-[11px] text-[#7F8F6B] font-bold uppercase">{item.store}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: PANTRY */}
+        {tab === 'pantry' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="w-5 h-5 text-[#55624F]" />
+                <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Pantry & Household Staples</h2>
+              </div>
+              <p className="text-xs text-stone-500 mt-1">Out-of-stock items automatically sync to your Grocery list.</p>
+              
+              <div className="flex gap-2 mt-4">
+                <input value={newPantryName} onChange={e => setNewPantryName(e.target.value)} placeholder="Add staple item (e.g., Paper Towels)..." className="flex-1 px-3.5 py-2.5 border rounded-xl text-sm border-[#F5EDE3] focus:outline-none focus:ring-2 focus:ring-[#55624F]" />
+                <button onClick={addPantryItem} className="bg-[#55624F] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#434F3E] transition">+ Add Item</button>
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              {pantryItems.map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-2xl border border-[#F5EDE3] flex justify-between items-center shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => togglePantryStock(item.id)}>
+                      {item.inStock ? (
+                        <div className="w-5 h-5 rounded-full bg-[#7F8F6B] flex items-center justify-center text-white">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <Circle className="w-5 h-5 text-[#C76F42] stroke-[2.2]" />
+                      )}
+                    </button>
+                    <div>
+                      <h4 className="font-bold text-sm text-[#2E2E2E]">{item.name}</h4>
+                      <span className="text-[11px] text-[#7F8F6B]">{item.category} • {item.store || 'HEB'}</span>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.inStock ? 'bg-[#7F8F6B]/15 text-[#55624F]' : 'bg-[#F5EDE3] text-[#C76F42] border border-[#C76F42]/30'}`}>
+                    {item.inStock ? 'In Stock' : 'Added to Grocery List'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: DISCOVER / EXPLORE */}
+        {tab === 'discover' && (
+          <div className="space-y-6">
+            <div className="bg-[#FCFAF7] p-6 rounded-3xl border border-[#F5EDE3] shadow-xs">
+              <div className="flex items-center gap-2 text-[#C76F42] mb-1">
+                <Sparkles className="w-5 h-5" />
+                <span className="text-xs uppercase font-extrabold tracking-wider">AI Recipe Builder & Importer</span>
+              </div>
+              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Explore & Import Recipes</h2>
+              <p className="text-stone-500 text-sm mt-1">Paste any recipe website URL or enter ingredients to auto-generate structured recipes</p>
+
+              <div className="flex gap-2 mt-4">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-stone-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Paste recipe URL (e.g., foodnetwork.com, allrecipes.com)..." 
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#7F8F6B]/30 text-sm focus:outline-none focus:ring-2 focus:ring-[#55624F]"
+                  />
+                </div>
+                <button className="bg-[#55624F] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#434F3E] transition flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4" /> Import
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: PREFS */}
+        {tab === 'prefs' && (
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-3xl border border-[#F5EDE3] shadow-xs">
+              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Preferences & Profile</h2>
+              <p className="text-stone-500 text-sm mt-1">Configure family settings, budgets, and API integrations</p>
+              
+              <div className="mt-4 space-y-4">
+                <label className="block text-xs font-bold text-[#55624F]">Family Name
+                  <input value={prefs.familyName} onChange={e => setPrefs({ ...prefs, familyName: e.target.value })} className="w-full mt-1 p-2.5 border border-[#F5EDE3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#55624F]" />
+                </label>
+                <label className="block text-xs font-bold text-[#55624F]">Weekly Budget ($)
+                  <input value={prefs.weeklyBudget} onChange={e => setPrefs({ ...prefs, weeklyBudget: e.target.value })} className="w-full mt-1 p-2.5 border border-[#F5EDE3] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#55624F]" />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* RECIPE DETAIL MODAL */}
+      {selectedRecipe && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl">
+            <div className="flex justify-between items-center">
+              <h3 className="font-extrabold text-xl text-[#2E2E2E]">{selectedRecipe.title}</h3>
+              <button onClick={() => setSelectedRecipe(null)} className="font-bold text-stone-400 hover:text-[#2E2E2E]">✕</button>
+            </div>
+            <p className="text-sm text-stone-600">{selectedRecipe.instructions}</p>
+            <button onClick={() => { setCookingRecipe(selectedRecipe); setSelectedRecipe(null); }} className="w-full py-3 bg-[#55624F] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md hover:bg-[#434F3E] transition">
+              <ChefHat className="w-5 h-5" /> Enter Cooking Mode
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* COOKING MODE OVERLAY */}
+      {cookingRecipe && <CookingMode recipe={cookingRecipe} onClose={() => setCookingRecipe(null)} />}
+
+      {/* BOTTOM NAVIGATION BAR */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F5EDE3] z-40 shadow-lg">
+        <div className="max-w-md mx-auto px-4 py-2.5 flex justify-between items-center">
+          
+          <button 
+            onClick={() => setTab('recipes')}
+            className={`flex flex-col items-center gap-1 transition ${tab === 'recipes' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
+          >
+            <BookOpen className="w-5 h-5 stroke-[2.2]" />
+            <span className="text-[11px] font-bold">Recipes</span>
+          </button>
+
+          <button 
+            onClick={() => setTab('planner')}
+            className={`flex flex-col items-center gap-1 transition ${tab === 'planner' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
+          >
+            <Calendar className="w-5 h-5 stroke-[2.2]" />
+            <span className="text-[11px] font-bold">Planner</span>
+          </button>
+
+          <button 
+            onClick={() => setTab('grocery')}
+            className={`flex flex-col items-center gap-1 transition ${tab === 'grocery' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
+          >
+            <ShoppingCart className="w-5 h-5 stroke-[2.2]" />
+            <span className="text-[11px] font-bold">Grocery</span>
+          </button>
+
+          <button 
+            onClick={() => setTab('pantry')}
+            className={`flex flex-col items-center gap-1 transition ${tab === 'pantry' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
+          >
+            <Package className="w-5 h-5 stroke-[2.2]" />
+            <span className="text-[11px] font-bold">Pantry</span>
+          </button>
+
+          <button 
+            onClick={() => setTab('discover')}
+            className={`flex flex-col items-center gap-1 transition ${tab === 'discover' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
+          >
+            <Compass className="w-5 h-5 stroke-[2.2]" />
+            <span className="text-[11px] font-bold">Discover</span>
+          </button>
+
+          <button 
+            onClick={() => setTab('prefs')}
+            className={`flex flex-col items-center gap-1 transition ${tab === 'prefs' ? 'text-[#55624F]' : 'text-stone-400 hover:text-[#55624F]'}`}
+          >
+            <Settings className="w-5 h-5 stroke-[2.2]" />
+            <span className="text-[11px] font-bold">Prefs</span>
+          </button>
+
+        </div>
+      </nav>
+
+    </div>
+  );
+}
