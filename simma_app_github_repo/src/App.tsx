@@ -1,7 +1,24 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  BookOpen, 
+  Calendar, 
+  ShoppingCart, 
+  Compass, 
+  Settings, 
+  Store, 
+  Circle, 
+  Check, 
+  Plus, 
+  Sparkles, 
+  Package, 
+  Search, 
+  ExternalLink,
+  Flame,
+  ChefHat
+} from 'lucide-react';
 
 // ==================== TYPES & INTERFACES ====================
-type PrimaryStore = 'HEB' | 'Walmart' | 'Kroger';
+type PrimaryStore = 'HEB' | 'Walmart' | 'Kroger' | 'Cheapest';
 type ActiveTab = 'recipes' | 'planner' | 'grocery' | 'pantry' | 'discover' | 'prefs';
 
 interface Ingredient {
@@ -33,7 +50,7 @@ interface Recipe {
   ingredients: Ingredient[];
   instructions: string;
   timesUsed: number;
-  imgScan?: number;
+  prepTime?: string;
 }
 
 interface PantryItem {
@@ -41,6 +58,20 @@ interface PantryItem {
   name: string;
   category: string;
   inStock: boolean;
+  store?: 'HEB' | 'Kroger' | 'Walmart';
+  estimatedPrice?: number;
+}
+
+interface GroceryItem {
+  id: string;
+  name: string;
+  category: string;
+  aisle: string;
+  quantity: string;
+  estimatedPrice: number;
+  store: 'HEB' | 'Kroger' | 'Walmart';
+  checked: boolean;
+  fromPantry?: boolean;
 }
 
 interface DaySlot {
@@ -55,15 +86,51 @@ interface DayPlan {
   dinner: DaySlot;
 }
 
-const defaultAisles: Record<string, number> = {
-  "Produce": 1, "Meat & Seafood": 5, "Dairy & Eggs": 8, "Bakery": 10,
-  "Frozen": 12, "Pantry / Canned": 14, "Spices & Baking": 16,
-  "Beverages": 18, "Snacks": 20, "Other": 99
-};
-
+// ==================== INITIAL DATA ====================
 const sampleRecipes: Recipe[] = [
-  { id: "r1", title: "Lemon Garlic Chicken & Broccoli", category: "Dinner", dietTags: ["High-Protein", "Low-Carb", "Heart-Healthy"], image: null, url: null, rating: 4.5, favorite: true, baseServings: 4, nutrition: { calories: 420, protein: 42, carbs: 12, fat: 22, fiber: 5 }, ingredients: [ { name: "Chicken breast", amount: 1.5, unit: "lb", aisle: "Meat & Seafood" }, { name: "Broccoli florets", amount: 4, unit: "cups", aisle: "Produce" }, { name: "Garlic", amount: 4, unit: "cloves", aisle: "Produce" }, { name: "Lemon", amount: 2, unit: "", aisle: "Produce" }, { name: "Olive oil", amount: 2, unit: "tbsp", aisle: "Pantry / Canned" } ], instructions: "1. Season chicken with salt, pepper, garlic.\n2. Sear in olive oil 5-6 min per side.\n3. Add broccoli and lemon juice, cover 4 min.\n4. Serve hot.", timesUsed: 3 },
-  { id: "r2", title: "H-E-B Copycat Poblano Chicken Lasagna", category: "Dinner", dietTags: ["High-Protein", "Comfort Food"], image: null, url: null, rating: 4.8, favorite: true, baseServings: 6, nutrition: { calories: 520, protein: 38, carbs: 42, fat: 22, fiber: 4 }, ingredients: [ { name: "Chicken breast", amount: 2, unit: "lb", aisle: "Meat & Seafood" }, { name: "Poblano peppers", amount: 4, unit: "count", aisle: "Produce" }, { name: "Oaxaca cheese", amount: 1, unit: "block", aisle: "Dairy & Eggs" }, { name: "Heavy cream", amount: 1, unit: "carton", aisle: "Dairy & Eggs" }, { name: "Lasagna noodles", amount: 1, unit: "box", aisle: "Pantry / Canned" } ], instructions: "1. Roast poblanos and blend with heavy cream.\n2. Layer cooked shredded chicken, sauce, noodles, and Oaxaca cheese.\n3. Bake at 375°F for 30 minutes until bubbly.", timesUsed: 5 }
+  {
+    id: "r1",
+    title: "H-E-B Copycat Poblano Chicken Lasagna",
+    category: "Dinner",
+    prepTime: "45 mins",
+    dietTags: ["High-Protein", "Comfort Food", "Copycat"],
+    image: "https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&w=600&q=80",
+    url: null,
+    rating: 4.8,
+    favorite: true,
+    baseServings: 6,
+    nutrition: { calories: 520, protein: 38, carbs: 42, fat: 22, fiber: 4 },
+    ingredients: [
+      { name: "Boneless Skinless Chicken Breasts", amount: 2, unit: "lb", aisle: "Meat & Seafood" },
+      { name: "Poblano Peppers", amount: 4, unit: "count", aisle: "Produce" },
+      { name: "Oaxaca Cheese", amount: 1, unit: "block (8oz)", aisle: "Dairy & Eggs" },
+      { name: "Heavy Whipping Cream", amount: 1, unit: "carton (16oz)", aisle: "Dairy & Eggs" },
+      { name: "Lasagna Noodles", amount: 1, unit: "box (16oz)", aisle: "Pantry / Canned" }
+    ],
+    instructions: "1. Roast poblanos until charred, peel, and blend with heavy cream.\n2. Layer cooked shredded chicken, poblano sauce, noodles, and Oaxaca cheese.\n3. Bake at 375°F for 30 minutes until golden and bubbly.",
+    timesUsed: 5
+  },
+  {
+    id: "r2",
+    title: "Bacon-Wrapped Jalapeño Poppers",
+    category: "Appetizers",
+    prepTime: "25 mins",
+    dietTags: ["Keto", "Grill-Friendly", "Low-Carb"],
+    image: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=600&q=80",
+    url: null,
+    rating: 4.6,
+    favorite: true,
+    baseServings: 4,
+    nutrition: { calories: 310, protein: 14, carbs: 6, fat: 26, fiber: 2 },
+    ingredients: [
+      { name: "Fresh Jalapeños", amount: 8, unit: "count", aisle: "Produce" },
+      { name: "Cream Cheese (cold)", amount: 8, unit: "oz", aisle: "Dairy & Eggs" },
+      { name: "Thin-Cut Bacon", amount: 1, unit: "pack", aisle: "Meat & Seafood" },
+      { name: "Garlic Powder", amount: 1, unit: "tsp", aisle: "Spices & Baking" }
+    ],
+    instructions: "1. Slice jalapeños in half lengthwise and deseed.\n2. Stuff with cold cream cheese mixed with garlic powder.\n3. Wrap tightly with thin-cut bacon and grill over indirect heat (375°F) for 20-25 mins until crisp.",
+    timesUsed: 4
+  }
 ];
 
 const emptySlot = (): DaySlot => ({ type: "cook", recipeId: null, note: "" });
@@ -74,7 +141,22 @@ const emptyWeek = (): Record<string, DayPlan> => {
   return w;
 };
 
-// ==================== COOKING MODE COMPONENT ====================
+// ==================== BRAND LOGO ====================
+const SimmaLogo = ({ className = "h-8" }: { className?: string }) => (
+  <div className={`flex items-center gap-2.5 ${className}`}>
+    <svg viewBox="0 0 100 100" className="h-full w-auto aspect-square">
+      <path d="M 38 22 C 24 36 30 56 48 52 C 48 36 40 22 38 22 Z" fill="#7F8F6B"/>
+      <path d="M 62 22 C 76 36 70 56 52 52 C 52 36 60 22 62 22 Z" fill="#C76F42"/>
+      <text x="50" y="88" fontFamily="'Plus Jakarta Sans', sans-serif" fontSize="44" fontWeight="800" fill="#2E2E2E" textAnchor="middle">S</text>
+    </svg>
+    <div className="flex flex-col">
+      <span className="font-extrabold text-2xl tracking-tight text-[#2E2E2E] leading-none">Simma</span>
+      <span className="text-[9px] font-bold tracking-widest text-[#7F8F6B] uppercase mt-0.5">Good Food Comes Together</span>
+    </div>
+  </div>
+);
+
+// ==================== COOKING MODE OVERLAY ====================
 function CookingMode({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
   const steps = useMemo(() => {
     const parts = recipe.instructions.split(/\n+/).map(s => s.replace(/^\s*(step\s*)?\d+\s*[.):-]\s*/i, "").trim()).filter(Boolean);
@@ -118,22 +200,25 @@ function CookingMode({ recipe, onClose }: { recipe: Recipe; onClose: () => void 
 // ==================== MAIN SIMMA APP ====================
 export default function App() {
   const [tab, setTab] = useState<ActiveTab>('recipes');
-  const [recipes, setRecipes] = useState<Recipe[]>(sampleRecipes);
   const [servingMult, setServingMult] = useState<number>(1);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
-  const [plannerMeal, setPlannerMeal] = useState<string>('dinner');
+  const [selectedStoreMode, setSelectedStoreMode] = useState<PrimaryStore>('Cheapest');
   
+  // RECIPES STATE
+  const [recipes] = useState<Recipe[]>(sampleRecipes);
+
   // PANTRY STATE
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([
-    { id: "p1", name: "Sandwich Zip Bags", category: "Paper & Plastic", inStock: false },
-    { id: "p2", name: "Gallon Zip Bags", category: "Paper & Plastic", inStock: true },
-    { id: "p3", name: "Paper Towels (12 PK)", category: "Paper & Plastic", inStock: true },
-    { id: "p4", name: "Trash Bags (13 Gal)", category: "Cleaning & Soap", inStock: false },
-    { id: "p5", name: "Dishwasher Pods", category: "Cleaning & Soap", inStock: true }
+    { id: 'p1', name: 'Sandwich Zip Bags', category: 'Paper & Plastic', inStock: false, store: 'HEB', estimatedPrice: 3.48 },
+    { id: 'p2', name: 'Gallon Zip Bags', category: 'Paper & Plastic', inStock: true, store: 'HEB', estimatedPrice: 4.28 },
+    { id: 'p3', name: 'Paper Towels (12 PK)', category: 'Paper & Plastic', inStock: true, store: 'HEB', estimatedPrice: 18.98 },
+    { id: 'p4', name: 'Trash Bags (13 Gal)', category: 'Cleaning', inStock: false, store: 'Kroger', estimatedPrice: 9.99 },
+    { id: 'p5', name: 'Dishwasher Pods', category: 'Cleaning', inStock: true, store: 'HEB', estimatedPrice: 14.49 },
+    { id: 'p6', name: 'All-Purpose Spray', category: 'Cleaning', inStock: false, store: 'HEB', estimatedPrice: 3.78 },
   ]);
   const [newPantryName, setNewPantryName] = useState('');
-  const [newPantryCat, setNewPantryCat] = useState('Paper & Plastic');
+  const [newPantryCat] = useState('Paper & Plastic');
 
   // PREFERENCES STATE
   const [prefs, setPrefs] = useState({
@@ -145,12 +230,47 @@ export default function App() {
     allergies: [] as string[],
     geminiApiKey: ""
   });
-  const [newDislike, setNewDislike] = useState('');
 
   // PLANNER WEEKS STATE
   const [weeks, setWeeks] = useState<Record<string, Record<string, DayPlan>>>({
     "current": emptyWeek()
   });
+
+  // GROCERY COMPUTATION
+  const rawGroceryItems: GroceryItem[] = useMemo(() => [
+    { id: 'g1', name: 'Boneless Skinless Chicken Breasts', category: 'Meat', aisle: 'Aisle 2 - Poultry', quantity: `${2 * servingMult} lbs`, estimatedPrice: 7.96 * servingMult, store: 'HEB', checked: false },
+    { id: 'g2', name: 'Poblano Peppers', category: 'Produce', aisle: 'Aisle 1 - Produce', quantity: `${4 * servingMult} count`, estimatedPrice: 1.48 * servingMult, store: 'HEB', checked: false },
+    { id: 'g3', name: 'Oaxaca Cheese (8oz)', category: 'Dairy', aisle: 'Aisle 4 - Cheese', quantity: '1 block', estimatedPrice: 3.89, store: 'HEB', checked: false },
+    { id: 'g4', name: 'Heavy Whipping Cream (16oz)', category: 'Dairy', aisle: 'Aisle 4 - Dairy', quantity: '1 carton', estimatedPrice: 2.99, store: 'Kroger', checked: false },
+    { id: 'g5', name: 'Lasagna Noodles (16oz)', category: 'Pantry', aisle: 'Aisle 6 - Pasta', quantity: '1 box', estimatedPrice: 1.78, store: 'HEB', checked: false },
+  ], [servingMult]);
+
+  const pantryGroceryItems: GroceryItem[] = useMemo(() => 
+    pantryItems
+      .filter(item => !item.inStock)
+      .map(item => ({
+        id: `pantry-sync-${item.id}`,
+        name: item.name,
+        category: item.category,
+        aisle: item.store === 'HEB' ? 'Aisle 11 - Household' : 'Aisle 8 - Cleaning',
+        quantity: '1 pk',
+        estimatedPrice: item.estimatedPrice || 4.99,
+        store: item.store || 'HEB',
+        checked: false,
+        fromPantry: true
+      })), [pantryItems]);
+
+  const allGroceryItems = useMemo(() => [...rawGroceryItems, ...pantryGroceryItems], [rawGroceryItems, pantryGroceryItems]);
+
+  const filteredGroceryItems = useMemo(() => 
+    allGroceryItems.filter(item => {
+      if (selectedStoreMode === 'HEB') return item.store === 'HEB';
+      if (selectedStoreMode === 'Kroger') return item.store === 'Kroger';
+      return true;
+    }), [allGroceryItems, selectedStoreMode]);
+
+  const calculatedTotal = useMemo(() => 
+    filteredGroceryItems.reduce((sum, item) => sum + item.estimatedPrice, 0), [filteredGroceryItems]);
 
   const togglePantryStock = (id: string) => {
     setPantryItems(prev => prev.map(p => p.id === id ? { ...p, inStock: !p.inStock } : p));
@@ -158,7 +278,14 @@ export default function App() {
 
   const addPantryItem = () => {
     if (!newPantryName.trim()) return;
-    setPantryItems(prev => [...prev, { id: `p_${Date.now()}`, name: newPantryName.trim(), category: newPantryCat, inStock: true }]);
+    setPantryItems(prev => [...prev, { 
+      id: `p_${Date.now()}`, 
+      name: newPantryName.trim(), 
+      category: newPantryCat, 
+      inStock: true,
+      store: 'HEB',
+      estimatedPrice: 3.99 
+    }]);
     setNewPantryName('');
   };
 
@@ -185,22 +312,12 @@ export default function App() {
       
       {/* BRAND HEADER */}
       <header className="bg-white border-b border-[#F5EDE3] sticky top-0 z-30 shadow-xs px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <svg viewBox="0 0 100 100" className="h-8 w-auto">
-            <path d="M 38 22 C 24 36 30 56 48 52 C 48 36 40 22 38 22 Z" fill="#7F8F6B"/>
-            <path d="M 62 22 C 76 36 70 56 52 52 C 52 36 60 22 62 22 Z" fill="#C76F42"/>
-            <text x="50" y="88" fontFamily="sans-serif" fontSize="44" fontWeight="800" fill="#2E2E2E" textAnchor="middle">S</text>
-          </svg>
-          <div>
-            <span className="font-extrabold text-xl tracking-tight leading-none block">Simma</span>
-            <span className="text-[9px] font-bold text-[#7F8F6B] uppercase tracking-wider">{prefs.familyName} Family Kitchen</span>
-          </div>
-        </div>
+        <SimmaLogo className="h-9" />
 
-        <div className="flex items-center gap-1.5 bg-[#F5EDE3]/60 p-1 rounded-xl">
+        <div className="flex items-center gap-1.5 bg-[#F5EDE3]/60 p-1 rounded-xl border border-[#F5EDE3]">
           <span className="text-xs font-bold text-[#55624F] px-1.5">Servings:</span>
           {[1, 2, 3].map(mult => (
-            <button key={mult} onClick={() => setServingMult(mult)} className={`px-2 py-0.5 text-xs font-bold rounded-lg ${servingMult === mult ? 'bg-[#55624F] text-white' : 'text-[#55624F]'}`}>
+            <button key={mult} onClick={() => setServingMult(mult)} className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${servingMult === mult ? 'bg-[#55624F] text-white' : 'text-[#55624F] hover:bg-white'}`}>
               {mult}x
             </button>
           ))}
@@ -208,21 +325,62 @@ export default function App() {
       </header>
 
       {/* MAIN CONTAINER */}
-      <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
 
         {/* TAB 1: RECIPES */}
         {tab === 'recipes' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-extrabold text-[#2E2E2E]">My Recipe Vault</h2>
-            <div className="grid gap-4">
-              {recipes.map(r => (
-                <div key={r.id} onClick={() => setSelectedRecipe(r)} className="bg-white rounded-3xl border border-[#F5EDE3] p-4 shadow-xs cursor-pointer hover:border-[#7F8F6B]/40 transition">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-lg text-[#2E2E2E]">{r.title}</h3>
-                      <span className="text-xs text-[#7F8F6B] font-semibold">{r.category} • {r.nutrition.calories * servingMult} kcal</span>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-extrabold text-[#2E2E2E]">My Recipe Vault</h2>
+                <p className="text-stone-500 text-sm">Saved recipes, macro targets, and serving scaler</p>
+              </div>
+              <button className="flex items-center gap-2 bg-[#55624F] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-[#434F3E] transition">
+                <Plus className="w-4 h-4" /> Add Recipe
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {recipes.map(recipe => (
+                <div key={recipe.id} onClick={() => setSelectedRecipe(recipe)} className="bg-white rounded-3xl border border-[#F5EDE3] shadow-xs overflow-hidden hover:border-[#7F8F6B]/40 transition flex flex-col cursor-pointer">
+                  {recipe.image && (
+                    <div className="h-48 overflow-hidden relative">
+                      <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+                      <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-md text-[#55624F] font-bold text-xs px-3 py-1 rounded-full border border-[#F5EDE3]">
+                        {recipe.category}
+                      </span>
                     </div>
-                    <span className="text-xs font-bold px-3 py-1 bg-[#F5EDE3] text-[#C76F42] rounded-full">{r.baseServings * servingMult} Servings</span>
+                  )}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <h3 className="font-extrabold text-lg text-[#2E2E2E]">{recipe.title}</h3>
+                      <div className="flex items-center gap-3 text-xs font-semibold text-[#7F8F6B] mt-1">
+                        {recipe.prepTime && <span>{recipe.prepTime}</span>}
+                        <span>•</span>
+                        <span>{recipe.baseServings * servingMult} Servings</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-[#C76F42]"><Flame className="w-3.5 h-3.5" /> {recipe.nutrition.calories * servingMult} kcal</span>
+                      </div>
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        {recipe.dietTags.map(tag => (
+                          <span key={tag} className="text-[10px] font-bold bg-[#F5EDE3] text-[#C76F42] px-2.5 py-0.5 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#F5EDE3]">
+                      <h4 className="text-xs font-bold uppercase text-[#55624F] tracking-wider mb-2">Scaled Ingredients ({servingMult}x):</h4>
+                      <ul className="text-xs text-stone-600 space-y-1">
+                        {recipe.ingredients.map((ing, idx) => (
+                          <li key={idx} className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7F8F6B]"></span>
+                            {ing.amount * servingMult} {ing.unit} {ing.name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -232,24 +390,27 @@ export default function App() {
 
         {/* TAB 2: PLANNER */}
         {tab === 'planner' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center bg-[#55624F] text-white p-5 rounded-3xl">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-[#55624F] text-white p-6 rounded-3xl shadow-sm">
               <div>
-                <h2 className="text-xl font-extrabold">Weekly Planner</h2>
-                <p className="text-xs text-[#F5EDE3]/90 mt-0.5">Meal scheduling & smart autofill</p>
+                <span className="text-xs uppercase font-extrabold tracking-wider text-[#7F8F6B] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">Meal Schedule</span>
+                <h2 className="text-2xl font-extrabold">Weekly Meal Planner</h2>
+                <p className="text-stone-200 text-sm mt-1">Meal scheduling & smart autofill</p>
               </div>
-              <button onClick={autoFillWeek} className="bg-[#C76F42] text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs">✨ Auto Fill</button>
+              <button onClick={autoFillWeek} className="bg-[#C76F42] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-xs hover:bg-[#B35E33] transition">
+                ✨ Auto Fill
+              </button>
             </div>
 
-            <div className="grid gap-2.5">
+            <div className="grid gap-3">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => {
                 const slot = weeks.current[day]?.dinner;
                 const recipe = recipes.find(r => r.id === slot?.recipeId);
                 return (
-                  <div key={day} className="bg-white p-4 rounded-2xl border border-[#F5EDE3] flex justify-between items-center">
-                    <span className="font-extrabold text-sm text-[#55624F] w-12">{day}</span>
-                    <span className="text-sm font-semibold flex-1 px-2">{recipe ? recipe.title : 'Open Slot'}</span>
-                    <span className="text-xs font-bold text-[#7F8F6B] bg-[#F5EDE3] px-2.5 py-1 rounded-full">{recipe ? 'Cook' : 'Empty'}</span>
+                  <div key={day} className="bg-white p-4 rounded-2xl border border-[#F5EDE3] flex justify-between items-center shadow-xs">
+                    <span className="font-extrabold text-sm text-[#55624F] w-16">{day}</span>
+                    <span className="text-sm font-semibold flex-1 px-2 text-[#2E2E2E]">{recipe ? recipe.title : 'Open Slot'}</span>
+                    <span className="text-xs font-bold text-[#7F8F6B] bg-[#F5EDE3] px-3 py-1 rounded-full">{recipe ? 'Dinner' : 'Empty'}</span>
                   </div>
                 );
               })}
@@ -259,117 +420,7 @@ export default function App() {
 
         {/* TAB 3: GROCERY */}
         {tab === 'grocery' && (
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-3xl border border-[#F5EDE3] shadow-xs">
-              <span className="text-xs font-bold text-[#C76F42] uppercase tracking-wider">Multi-Store Grocery List</span>
-              <h2 className="text-xl font-extrabold text-[#2E2E2E] mt-0.5">Smart Shopping List</h2>
-            </div>
-
-            <div className="bg-white rounded-3xl border border-[#F5EDE3] p-4 space-y-3">
-              <h3 className="font-extrabold text-sm text-[#55624F]">Out-of-Stock Household Items</h3>
-              {pantryItems.filter(p => !p.inStock).map(p => (
-                <div key={p.id} className="flex justify-between items-center p-2.5 bg-[#FCFAF7] rounded-xl border border-[#F5EDE3]">
-                  <span className="text-sm font-bold text-[#2E2E2E]">{p.name}</span>
-                  <span className="text-xs font-bold px-2.5 py-0.5 bg-[#F5EDE3] text-[#C76F42] rounded-full">Need Reorder</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: PANTRY */}
-        {tab === 'pantry' && (
-          <div className="space-y-4">
-            <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs">
-              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Pantry & Household Staples</h2>
-              <p className="text-xs text-stone-500 mt-1">Out-of-stock items automatically sync to your Grocery list.</p>
-              
-              <div className="flex gap-2 mt-4">
-                <input value={newPantryName} onChange={e => setNewPantryName(e.target.value)} placeholder="Add staple item..." className="flex-1 px-3.5 py-2 border rounded-xl text-sm" />
-                <button onClick={addPantryItem} className="bg-[#55624F] text-white px-4 py-2 rounded-xl text-xs font-bold">+ Add</button>
-              </div>
-            </div>
-
-            <div className="grid gap-2.5">
-              {pantryItems.map(p => (
-                <div key={p.id} className="bg-white p-3.5 rounded-2xl border border-[#F5EDE3] flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => togglePantryStock(p.id)} className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${p.inStock ? 'bg-[#7F8F6B] text-white' : 'border-2 border-[#C76F42]'}`}>
-                      {p.inStock ? '✓' : ''}
-                    </button>
-                    <span className="font-bold text-sm text-[#2E2E2E]">{p.name}</span>
-                  </div>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${p.inStock ? 'bg-[#7F8F6B]/15 text-[#55624F]' : 'bg-[#F5EDE3] text-[#C76F42]'}`}>
-                    {p.inStock ? 'In Stock' : 'Reorder Needed'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: DISCOVER */}
-        {tab === 'discover' && (
-          <div className="space-y-4">
-            <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs">
-              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Discover & AI Builder</h2>
-              <p className="text-xs text-stone-500 mt-1">Generate custom recipes using Gemini AI</p>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 6: PREFS */}
-        {tab === 'prefs' && (
-          <div className="space-y-4">
-            <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs">
-              <h2 className="text-2xl font-extrabold text-[#2E2E2E]">Preferences & Profile</h2>
-              <div className="mt-4 space-y-3">
-                <label className="block text-xs font-bold text-[#55624F]">Family Name
-                  <input value={prefs.familyName} onChange={e => setPrefs({ ...prefs, familyName: e.target.value })} className="w-full mt-1 p-2 border rounded-xl text-sm" />
-                </label>
-                <label className="block text-xs font-bold text-[#55624F]">Weekly Budget ($)
-                  <input value={prefs.weeklyBudget} onChange={e => setPrefs({ ...prefs, weeklyBudget: e.target.value })} className="w-full mt-1 p-2 border rounded-xl text-sm" />
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* RECIPE DETAIL MODAL */}
-      {selectedRecipe && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-xl text-[#2E2E2E]">{selectedRecipe.title}</h3>
-              <button onClick={() => setSelectedRecipe(null)} className="font-bold text-stone-400">✕</button>
-            </div>
-            <p className="text-sm text-stone-600">{selectedRecipe.instructions}</p>
-            <button onClick={() => { setCookingRecipe(selectedRecipe); setSelectedRecipe(null); }} className="w-full py-3 bg-[#55624F] text-white font-bold rounded-xl">👩‍🍳 Enter Cooking Mode</button>
-          </div>
-        </div>
-      )}
-
-      {/* COOKING MODE OVERLAY */}
-      {cookingRecipe && <CookingMode recipe={cookingRecipe} onClose={() => setCookingRecipe(null)} />}
-
-      {/* BOTTOM NAVIGATION (Recipes / Planner / Grocery / Pantry / Discover / Prefs) */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-[#F5EDE3] flex justify-around py-2.5 z-40 shadow-lg">
-        {[
-          { id: 'recipes', label: 'Recipes' },
-          { id: 'planner', label: 'Planner' },
-          { id: 'grocery', label: 'Grocery' },
-          { id: 'pantry', label: 'Pantry' },
-          { id: 'discover', label: 'Discover' },
-          { id: 'prefs', label: 'Prefs' }
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as ActiveTab)} className={`flex flex-col items-center text-[11px] font-bold ${tab === t.id ? 'text-[#55624F]' : 'text-stone-400'}`}>
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </nav>
-
-    </div>
-  );
-}
+          <div className="space-y-6">
+            <div className="bg-white p-5 rounded-3xl border border-[#F5EDE3] shadow-xs flex flex-col md:flex-row justify-between md:items-center gap-4">
+              <div>
+                <span className="text-xs uppercase font-extrabold tracking-wider text-[#C76F42]">Shop Smart
